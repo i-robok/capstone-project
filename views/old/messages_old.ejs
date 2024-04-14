@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Messages</title>
+    <!-- Style or links to stylesheets -->
+</head>
+<body>
+    <h1>Messages</h1>
+    
+    <section id="send-message">
+        <h2>Send a Message</h2>
+        <form action="/send-message" method="POST">
+            <label for="recipient">Recipient:</label>
+            <input type="text" id="recipient" name="recipient" required>
+
+            <label for="messageText">Message:</label>
+            <textarea id="messageText" name="messageText" rows="4" cols="50" required></textarea>
+
+            <button type="submit">Send Message</button>
+        </form>
+    </section>
+
+    <section id="received-messages">
+        <h2>Received Messages</h2>
+        <% if (receivedMessages && receivedMessages.length) { %>
+            <ul>
+                <% receivedMessages.forEach(function(message) { %>
+                    <li>
+                        <strong>From:</strong> <%= message.sender_username %> 
+                        <strong>Date:</strong> <%= message.date_sent %><br>
+                        <p><%= message.text %></p>
+                    </li>
+                <% }); %>
+            </ul>
+        <% } else { %>
+            <p>No messages found.</p>
+        <% } %>
+    </section>
+</body>
+</html>

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>User Messages</title>
+</head>
+<body>
+    <h1>User Messages</h1>
+    <a href="/send?user=<%= encodeURIComponent(user) %>">Send a Message</a>
+    <table>
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Message</th>
+            </tr>
+        </thead>
+        <% messages.forEach(function(index, message) { %>
+            <tr>
+                <td><%= index %></td>
+                <td><%= message %></td>
+            </tr>
+        <% }); %>
+    </table>
+</body>
+</html>

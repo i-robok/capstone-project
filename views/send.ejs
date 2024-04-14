@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Send Message</title>
+</head>
+<body>
+    <h1>Send Message</h1>
+    <form action="/send" method="POST">
+        <input type="hidden" id="sender" name="sender" value="">
+        <label for="recipient">Recipient:</label>
+        <input type="text" id="recipient" name="recipient" required>
+        <br>
+        <label for="message">Message:</label>
+        <textarea id="message" name="message" required></textarea>
+        <br>
+        <button type="submit">Send Message</button>
+    </form>
+    <script>
+        // Populate the hidden sender input field with the query parameter
+        document.getElementById('sender').value = new URLSearchParams(window.location.search).get('user');
+    </script>
+</body>
+</html>
