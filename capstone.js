@@ -117,6 +117,6 @@ app.post('/send', (req, res) => {
 
 // Start the server
 const PORT = process.env.PORT || 3000;
-app.listen(port, () => {
-    console.log(`Server running at http://localhost:${port}/`);
+app.listen(PORT, () => {
+    console.log(`Server running at http://localhost:${PORT}/`);
 });
