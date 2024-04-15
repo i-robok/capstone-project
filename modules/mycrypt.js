@@ -60,8 +60,8 @@ const generateKeyPair = (passphrase) => {
       privateKeyEncoding: {
         type: 'pkcs8',      // recommended to be 'pkcs8' by the Node.js docs
         format: 'pem',
-        cipher: 'aes-256-cbc',   // optional encryption for the private key
-        passphrase: passphrase   // optional passphrase for the encrypted private key
+        cipher: 'aes-256-cbc',   // encryption for the private key
+        passphrase: passphrase   // passphrase for the encrypted private key
       }
     }, (err, publicKey, privateKey) => {
       if (err) {
@@ -76,6 +76,12 @@ const generateKeyPair = (passphrase) => {
 
 const encryptWithPublicKey = (publicKey, message) => {
   const bufferMessage = Buffer.from(message, 'utf8');
+  const maxDataSize = 180;
+
+  if (bufferMessage.length > maxDataSize) {
+    throw new Error(`Message is too long (${bufferMessage.length} bytes), max length is ${maxDataSize} bytes.`);
+  }
+
   return crypto.publicEncrypt(
     {
       key: publicKey,
@@ -101,8 +107,12 @@ const decryptWithPrivateKey = (privateKey, encryptedMessage, passphrase='') => {
 
     return decryptedMessage.toString('utf8');
   } catch (error) {
+    console.error(`Decryption failed: ${privateKey}-${passphrase}`);
     console.error('Decryption failed:', error);
-    throw error;
+    console.error('Encrypted message:', encryptedMessage);
+    console.error(error.stack);
+    // throw error;
+    return null;
   }
 };
 

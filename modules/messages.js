@@ -9,14 +9,15 @@ async function sendMessage(senderUsername, receiverUsername, message) {
         console.log(`Sending message to ${receiverUsername}: ${message}`);
 
         const receiverPublicKey = await getUserPublicKey(receiverUsername);
-        console.log(`Receiver public key: ${receiverPublicKey}`);
+        console.log(`Receiver user ${receiverUsername} public key: ${receiverPublicKey}`);
         const encryptedMessage = encryptWithPublicKey(receiverPublicKey, message);
         console.log(`Encrypted message: ${JSON.stringify(encryptedMessage)}`);
 
         await storeMessage(receiverUsername, senderUsername, encryptedMessage);
     } catch (error) {
-        console.error(`ERROR in sendMessage: ${error.errorMessage}`);
-        throw new Error(`Failed to send message: ${error.errorMessage}`);
+        console.error(`ERROR in sendMessage: ${error}`);
+        console.error(error.stack);
+        throw new Error(`Failed to send message: ${error}`);
     }
 }
 
@@ -29,13 +30,16 @@ async function retrieveUserMessages(username, password) {
         console.log(`Encrypted messages: ${JSON.stringify(encryptedMessages)}`);
 
         return encryptedMessages.map((msg) => ({
+            id: msg.id,
             sender: msg.sender_username,
-            message: decryptWithPrivateKey(receiverPrivateKey, msg.encrypted_message, password)
+            message: decryptWithPrivateKey(receiverPrivateKey, msg.encrypted_message, password),
+            timestamp: msg.timestamp
         }));
     } catch (error) {
         console.error(`ERROR in retrieveUserMessages: ${error}`);
         console.error(error.stack);
-        throw new Error('Failed to retrieve messages');
+        return [];
+        // throw new Error('Failed to retrieve messages');
     }
 }
 

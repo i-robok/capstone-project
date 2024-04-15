@@ -2,12 +2,12 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>User Messages</title>
-    <!-- Consider adding some CSS for styling if desired -->
+    <title>Capstone Project - User Messages</title>
     <style>
         table {
             width: 100%;
             border-collapse: collapse;
+            margin-top: 20px; /* Add space between buttons and table */
         }
         th, td {
             border: 1px solid #ddd;
@@ -17,11 +17,44 @@
         th {
             background-color: #f2f2f2;
         }
+        .button-container {
+            margin-bottom: 10px; /* Adjust as needed for spacing */
+        }
     </style>
+    <script type="text/javascript">
+        async function logout() {
+            if (confirm('Logout: are you sure?')) {
+                try {
+                    const response = await fetch('/logout', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    const result = await response.json();
+                    if (response.ok) {
+                        window.location.href = '/';
+                    } else {
+                        alert(result.errorMessage);
+                    }
+                } catch (error) {
+                    alert('An error occurred while sending your logout request. Please try again.');
+                }
+            }
+        }
+    </script>
 </head>
 <body>
-    <h1>User Messages for <%= user %></h1>
-    <a href="/send?user=<%= encodeURIComponent(user) %>">Send a Message</a>
+    <h1>Capstone Project</h1>
+    <h2>User Messages for <%= user %></h2>
+    <div class="button-container">
+        <form action="/send" method="GET" style="display: inline;">
+            <button type="submit">Send a message</button>
+        </form>
+
+        <button onclick="logout()">Logout</button>
+    </div>
     <table>
         <thead>
             <tr>
@@ -35,8 +68,8 @@
             <% messages.forEach(function(message) { %>
                 <tr>
                     <td><%= message.id %></td>
-                    <td><%= message.sender_username %></td>
-                    <td><%= message.encrypted_message %></td>
+                    <td><%= message.sender %></td>
+                    <td><%= message.message %></td>
                     <!-- Format timestamp for readability (simple conversion) -->
                     <td><%= new Date(message.timestamp).toLocaleString() %></td>
                 </tr>

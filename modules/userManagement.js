@@ -7,9 +7,9 @@ const { deriveKey, deriveHash, encrypt, decrypt, generateKeyPair } = require('./
 
 require('dotenv').config();
 
-async function loadUsers(usersFilePath) {
+async function loadJsonFile(jsonFilePath) {
   try {
-    const data = await fs.readFile(usersFilePath, 'utf8');
+    const data = await fs.readFile(jsonFilePath, 'utf8');
     return JSON.parse(data);
   } catch (error) {
     if (error.code === 'ENOENT') {
@@ -19,29 +19,56 @@ async function loadUsers(usersFilePath) {
   }
 }
 
-// Load registered users from file her to avoid re-loading the info on each request.
-var registered_users = {}; 
+async function saveJsonFile(jsonFilePath, users) {
+  const data = JSON.stringify(users, null, 2);
+  await fs.writeFile(jsonFilePath, data, 'utf8');
+}
 
-// Use an IIFE (Immediately Invoked Function Expression) to allow initialization on startup.
-(async () => {
-    try {
-        registered_users = await loadUsers(process.env.USERS_FILE);
-        // Proceed with registered_users
-    } catch (error) {
-        console.error("An error occurred:", error);
-    }
-})();
+var registered_users = null; 
+var registered_users_binaries = null;
 
 // Exported functions
 
-async function saveUsers(users) {
-  const data = JSON.stringify(users, null, 2);
-  await fs.writeFile(process.env.USERS_FILE, data, 'utf8');
+async function registeredUserLoaded() {
+  if (registered_users === null) {
+    registered_users = await loadJsonFile(process.env.USERS_FILE);
+  }
+  if (registered_users_binaries === null) {
+    registered_users_binaries = await loadJsonFile(process.env.BINARIES_FILE);
+  }
+
+  return ! (registered_users === null);
 }
 
-async function registerUser(email, password) {
+async function saveUsers() {
+  await saveJsonFile(process.env.USERS_FILE, registered_users);
+  await saveJsonFile(process.env.BINARIES_FILE, registered_users_binaries);
+}
 
-  if (registered_users[email]) {
+function findUser(email) {
+  email = email.toLowerCase().trim();
+  const user = (registered_users[email]) ? { 
+                 ...registered_users[email],
+                 ...registered_users_binaries[email]
+              } : null;
+
+  return user;
+}
+
+function userExists(email) {
+  const user = findUser(email);
+
+  if (user) {
+    return true;
+  }
+  return false;
+}
+
+
+async function registerUser(email, password) {
+  await registeredUserLoaded();
+
+  if (userExists(email)) {
     throw new Error('User already exists');
   }
 
@@ -53,21 +80,27 @@ async function registerUser(email, password) {
   const { publicKey, privateKey } = await generateKeyPair(password);
 
   registered_users[email] = {
-    hash: hash.toString('hex'),
-    salt,
-    publicKey,
-    privateKey: privateKey
+    hash: hash.toString('hex')
   };
 
-  await saveUsers(registered_users);
+  registered_users_binaries[email] = {
+    salt,
+    publicKey,
+    privateKey
+  };
+
+  await saveUsers();
 
   return { email };
 }
 
 async function authenticateUser(email, password) {
-  const user = registered_users[email];
+  await registeredUserLoaded();
+
+  const user = findUser(email);
 
   if (!user) {
+    console.error(`User '${email}' does not exist`);
     throw new Error('User does not exist');
   }
 
@@ -80,37 +113,29 @@ async function authenticateUser(email, password) {
 }
 
 async function getUserPublicKey (email) {
-  const user = registered_users[email];
+  await registeredUserLoaded();
+
+  const user = findUser(email);
 
   if (!user) {
     throw new Error('User does not exist');
   }
 
   const { publicKey } = user;
-
   return publicKey;
 }
 
 async function getUserPrivateKey(email) {
-  const user = registered_users[email];
+  await registeredUserLoaded();
+
+  const user = findUser(email);
 
   if (!user) {
     throw new Error('User does not exist');
   }
 
   const { privateKey } = user;
-
-  return privateKey ;
-}
-
-async function userExists(email) {
-  const user = registered_users[email];
-
-  if (!user) {
-    return false;
-  }
-
-  return true;
+  return privateKey;
 }
 
 module.exports = { registerUser, authenticateUser, getUserPublicKey, getUserPrivateKey, userExists };

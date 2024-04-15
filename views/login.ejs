@@ -10,16 +10,12 @@
 
     <form id="loginForm">
         <label for="username">Username:</label>
-        <input type="text" id="username" name="username" required>
+        <input type="text" id="username" name="username" pattern="\w+" title="Username should only contain letters and numbers." required>
         <br>
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required>
         <br>
         <button type="button" onclick="submitLoginForm()">Login</button>
-    </form>
-
-    <form action="/" method="GET">
-        <button type="submit">Home</button>
     </form>
 
     <script>

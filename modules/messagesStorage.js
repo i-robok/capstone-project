@@ -1,8 +1,10 @@
 const fs = require('fs').promises;
+
+require('dotenv').config();
 const path = require('path');
 
 // Define the path to the JSON file where messages will be stored.
-const MESSAGE_FILE_PATH = path.join(__dirname, 'messages.json');
+const MESSAGE_FILE_PATH = process.env.MESSAGES_FILE;
 
 // Helper function to read messages from the JSON file.
 async function readMessagesFile() {
