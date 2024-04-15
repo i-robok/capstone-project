@@ -1,40 +1,64 @@
-// messageStorage.js
-const mysql = require('mysql');
+const fs = require('fs').promises;
+const path = require('path');
 
-// Retrieve MySQL connection credentials from environment variables
-const dbConfig = {
-  host     : process.env.DB_HOST,
-  user     : process.env.DB_USER,
-  password : process.env.DB_PASSWORD,
-  database : process.env.DB_NAME
-};
+// Define the path to the JSON file where messages will be stored.
+const MESSAGE_FILE_PATH = path.join(__dirname, 'messages.json');
 
-// Create a MySQL connection using the credentials from environment variables
-const connection = mysql.createConnection(dbConfig);
-
-async function storeMessage(receiverUsername, senderUsername, encryptedMessage, callback) {
-    const query = `
-        INSERT INTO messages (receiver_username, sender_username, encrypted_message)
-        VALUES (?, ?, ?)
-    `;
-
-    connection.query(query, [receiverUsername, senderUsername, encryptedMessage], function(error, results, fields) {
-        if (error) return callback(error);
-        callback(null, results.insertId); // Return the ID of the inserted message
-    });
+// Helper function to read messages from the JSON file.
+async function readMessagesFile() {
+    try {
+        const data = await fs.readFile(MESSAGE_FILE_PATH, 'utf8');
+        return JSON.parse(data);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            // If the file does not exist, return an empty array.
+            return [];
+        } else {
+            console.error(`Error reading file ${MESSAGE_FILE_PATH}: ${error}`);
+            throw error;
+        }
+    }
 }
 
-async function retrieveMessages(username, callback) {
-    const query = `
-        SELECT * FROM messages 
-        WHERE receiver_username = ?
-        ORDER BY timestamp DESC
-    `;
+// Helper function to write messages to the JSON file.
+async function writeMessagesFile(messages) {
+    await fs.writeFile(MESSAGE_FILE_PATH, JSON.stringify(messages, null, 2), 'utf8');
+}
 
-    connection.query(query, [username], function(error, results, fields) {
-        if (error) return callback(error);
-        callback(null, results); // Returns an array of messages
-    });
+async function storeMessage(receiverUsername, senderUsername, encryptedMessage) {
+    // Read the current list of messages from the JSON file.
+    const messages = await readMessagesFile();
+
+    // Create a new message object with a generated ID and current timestamp.
+    const newMessage = {
+        id: messages.length + 1,
+        receiver_username: receiverUsername,
+        sender_username: senderUsername,
+        encrypted_message: encryptedMessage,
+        timestamp: new Date().toISOString()
+    };
+
+    // Add the new message to the messages array.
+    messages.push(newMessage);
+
+    // Write the updated messages back to the JSON file.
+    await writeMessagesFile(messages);
+
+    // Return the ID of the inserted message.
+    return newMessage.id;
+}
+
+async function retrieveMessages(username) {
+    // Read the current list of messages from the JSON file.
+    const messages = await readMessagesFile();
+
+    // Filter messages for those received by the specified username and sort them by timestamp.
+    const userMessages = messages
+        .filter(message => message.receiver_username === username)
+        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Returns an array of messages for the user.
+    return userMessages;
 }
 
 module.exports = {

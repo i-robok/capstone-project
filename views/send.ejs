@@ -2,23 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Send Message</title>
+    <title>Capstone Project - Send Message</title>
 </head>
 <body>
-    <h1>Send Message</h1>
-    <form action="/send" method="POST">
-        <input type="hidden" id="sender" name="sender" value="">
+    <h1>Capstone Project</h1>
+    <h2>Send Message</h2>
+
+    <form id="sendForm">
         <label for="recipient">Recipient:</label>
         <input type="text" id="recipient" name="recipient" required>
         <br>
         <label for="message">Message:</label>
         <textarea id="message" name="message" required></textarea>
         <br>
-        <button type="submit">Send Message</button>
+        <button type="button" onclick="submitSendForm()">Send Message</button>
     </form>
+
     <script>
-        // Populate the hidden sender input field with the query parameter
-        document.getElementById('sender').value = new URLSearchParams(window.location.search).get('user');
+        async function submitSendForm() {
+            const recipient = document.getElementById('recipient').value;
+            const message = document.getElementById('message').value;
+
+            try {
+                const response = await fetch('/send', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ recipient, message })
+                });
+
+                const result = await response.json();
+
+                // Handle the response based on status code
+                if (response.ok) {
+                    alert(result.message);
+                    window.location.href = '/messages';
+                } else {
+                    alert(result.errorMessage);
+                }
+            } catch (error) {
+                alert(`An error occurred while sending the message. Please try again. ${error}`);
+            }
+        }
     </script>
+
 </body>
 </html>

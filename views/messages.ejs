@@ -3,23 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <title>User Messages</title>
+    <!-- Consider adding some CSS for styling if desired -->
+    <style>
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+    </style>
 </head>
 <body>
-    <h1>User Messages</h1>
+    <h1>User Messages for <%= user %></h1>
     <a href="/send?user=<%= encodeURIComponent(user) %>">Send a Message</a>
     <table>
         <thead>
             <tr>
-                <th>#</th>
+                <th>ID</th>
+                <th>From</th>
                 <th>Message</th>
+                <th>Received At</th>
             </tr>
         </thead>
-        <% messages.forEach(function(index, message) { %>
-            <tr>
-                <td><%= index %></td>
-                <td><%= message %></td>
-            </tr>
-        <% }); %>
+        <tbody>
+            <% messages.forEach(function(message) { %>
+                <tr>
+                    <td><%= message.id %></td>
+                    <td><%= message.sender_username %></td>
+                    <td><%= message.encrypted_message %></td>
+                    <!-- Format timestamp for readability (simple conversion) -->
+                    <td><%= new Date(message.timestamp).toLocaleString() %></td>
+                </tr>
+            <% }); %>
+        </tbody>
     </table>
 </body>
 </html>

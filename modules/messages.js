@@ -1,54 +1,45 @@
-const crypto = require('crypto');
-const messageStorage = require('./messagesStorage'); // module for storing/retrieving messages
 
-const UserManagement = require('./userManagement');
-const userManager = new UserManagement('users.json');
-
-// Encrypt a message with the recipient's public key
-function encryptMessage(message, receiverPublicKey) {
-    const bufferMessage = Buffer.from(message, 'utf-8');
-    const encryptedMessage = crypto.publicEncrypt(receiverPublicKey, bufferMessage);
-    return encryptedMessage.toString('base64');
-}
-
-// Decrypt a message with the recipient's private key
-function decryptMessage(encryptedMessage, receiverPrivateKey) {
-    const bufferEncryptedMessage = Buffer.from(encryptedMessage, 'base64');
-    const decryptedMessage = crypto.privateDecrypt({
-        key: receiverPrivateKey,
-        padding: crypto.constants.RSA_PKCS1_PADDING
-    }, bufferEncryptedMessage);
-    return decryptedMessage.toString('utf-8');
-}
+const { storeMessage, retrieveMessages } = require('./messagesStorage');
+const { getUserPublicKey, getUserPrivateKey } = require('./userManagement');
+const { encryptWithPublicKey, decryptWithPrivateKey } = require('./mycrypt');
 
 // Send message to a recipient
 async function sendMessage(senderUsername, receiverUsername, message) {
     try {
-        const receiverPublicKey = await userManager.getUserPublicKey(receiverUsername);
-        const encryptedMessage = encryptMessage(message, receiverPublicKey);
+        console.log(`Sending message to ${receiverUsername}: ${message}`);
 
-        messageStorage.storeMessage(receiverUsername, senderUsername, encryptedMessage);
+        const receiverPublicKey = await getUserPublicKey(receiverUsername);
+        console.log(`Receiver public key: ${receiverPublicKey}`);
+        const encryptedMessage = encryptWithPublicKey(receiverPublicKey, message);
+        console.log(`Encrypted message: ${JSON.stringify(encryptedMessage)}`);
+
+        await storeMessage(receiverUsername, senderUsername, encryptedMessage);
     } catch (error) {
-        throw new Error(`Failed to send message: ${error.message}`);
+        console.error(`ERROR in sendMessage: ${error.errorMessage}`);
+        throw new Error(`Failed to send message: ${error.errorMessage}`);
     }
 }
 
 // Retrieve messages for a specific user and decrypt them
-async function retrieveMessages(username, password) {
+async function retrieveUserMessages(username, password) {
     try {
-        const receiverPrivateKey = await userManager.getUserPrivateKey(username, password);
-        const encryptedMessages = await messageStorage.retrieveMessages(username);
+        const receiverPrivateKey = await getUserPrivateKey(username);
+        console.log(`Receiver public key: ${receiverPrivateKey}`);
+        const encryptedMessages = await retrieveMessages(username);
+        console.log(`Encrypted messages: ${JSON.stringify(encryptedMessages)}`);
 
         return encryptedMessages.map((msg) => ({
-            sender: msg.sender,
-            message: decryptMessage(msg.encryptedMessage, receiverPrivateKey)
+            sender: msg.sender_username,
+            message: decryptWithPrivateKey(receiverPrivateKey, msg.encrypted_message, password)
         }));
     } catch (error) {
-        throw new Error(`Failed to retrieve messages: ${error.message}`);
+        console.error(`ERROR in retrieveUserMessages: ${error}`);
+        console.error(error.stack);
+        throw new Error('Failed to retrieve messages');
     }
 }
 
 module.exports = {
     sendMessage,
-    retrieveMessages,
+    retrieveUserMessages,
 };

@@ -2,25 +2,53 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <title>Capstone Project - Login</title>
 </head>
 <body>
-    <h1>Login</h1>
-    <form action="/login" method="POST">
+    <h1>Capstone Project</h1>
+    <h2>Login</h2>
+
+    <form id="loginForm">
         <label for="username">Username:</label>
         <input type="text" id="username" name="username" required>
         <br>
         <label for="password">Password:</label>
         <input type="password" id="password" name="password" required>
         <br>
-        <button type="submit">Login</button>
+        <button type="button" onclick="submitLoginForm()">Login</button>
     </form>
+
+    <form action="/" method="GET">
+        <button type="submit">Home</button>
+    </form>
+
     <script>
-        // Dummy login function (does nothing here)
-        function dummyLogin() {
-            alert('Login failed!');
-            window.location.href = '/';
+        async function submitLoginForm() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+
+                // Handle the response based on status code
+                if (response.ok) {
+                    window.location.href = '/messages';
+                } else {
+                    alert(result.errorMessage);
+                }
+            } catch (error) {
+                alert('An error occurred while sending your login request. Please try again.');
+            }
         }
     </script>
+
 </body>
 </html>

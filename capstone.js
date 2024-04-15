@@ -3,6 +3,8 @@ const express = require('express');
 const path = require('path');
 const app = express();
 
+require('dotenv').config();
+
 // Set 'views' directory for any views 
 // being rendered res.render()
 app.set('views', path.join(__dirname, 'views'));
@@ -11,19 +13,33 @@ app.set('views', path.join(__dirname, 'views'));
 app.engine('ejs', require('ejs').__express);
 app.set('view engine', 'ejs');
 
-// Serve static files from the "public" directory
-app.use(express.static('public'));
+// Set static path to public directory
+// app.use(express.static(path.join(__dirname, 'public')));
 
+// Parse incoming JSON requests
+app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Simple in-memory "database"
-const users = {
-    // username: password (in plain text for simplicity)
-};
+// Use session middleware to keep the username.
+const session = require('express-session');
 
-const messages = {
-    // username: ['message1', 'message2']
-};
+app.use(session({
+    secret: process.env.MASTER_PASSWORD,
+    resave: false,
+    saveUninitialized: true,
+    rolling: true, // Reset maxAge on every request to require user activity for session to be maintained
+    cookie: {
+        maxAge: 1 * 60 * 60 * 1000, // 1 hour in milliseconds
+        secure: process.env.NODE_ENV === "production" // Set 'secure: true' if you are using HTTPS, typically in production
+    }
+}));
+
+// Import project core functions
+const { registerUser, authenticateUser, userExists, getUserPublicKey, getUserPrivateKey } = require('./modules/userManagement');
+const { sendMessage, retrieveUserMessages } = require('./modules/messages');
+
+
+// Endpoints to manage the WEB site.
 
 // Route for home page
 app.get('/', (req, res) => {
@@ -35,20 +51,23 @@ app.get('/register', (req, res) => {
     res.render('register');
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
+    console.log(`req.body: ${JSON.stringify(req.body)}`);
     const { username, password } = req.body;
-    if (users[username]) {
-        // User already exists
-        res.render('register', { errorMessage: 'Registration failed. Please try again.' });
-        return res.redirect('/register');
+
+    try {
+      const userInfo = await registerUser(username, password);
+      console.log(`User registered: ${JSON.stringify(userInfo)}`);
+
+      res.status(201).json({ message: 'User registered successfully' });
+    } 
+    catch (error) {
+      console.error('Registration failed:', error.message);
+      console.error(error.stack);
+
+      res.status(500).json({ errorMessage: `Registration failed: ${error.message}` });
     }
     
-    // Register the user (insecure as plaintext!)
-    users[username] = password;
-    messages[username] = []; // Create an empty array for user messages
-
-    // Redirect to login on success
-    return res.redirect('/login');
 });
 
 // Route for login page
@@ -56,62 +75,83 @@ app.get('/login', (req, res) => {
     res.render('login');
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    if (users[username] === password) {
-        // Login successful, redirect to messages page
-        return res.redirect(`/messages?user=${encodeURIComponent(username)}`);
-    }
 
-    // Login failed
-    return res.redirect('/login');
+    try {
+      const isAuthenticated = await authenticateUser(username, password);
+      console.log(isAuthenticated ? 'Login successful' : 'Login failed');
+  
+      if (!isAuthenticated) {
+        throw new Error('Login failed: user doesnt exists or password is incorrect');
+      }
+
+      // User validated successfully, let's login
+      req.session.isAuthenticated = true;
+      req.session.user = { username: username };
+      req.session.messages = await retrieveUserMessages(username, password);
+
+      console.log(`User ${username} logged in`);
+      res.status(201).json({ message: 'Login successful' });
+    } 
+    catch (error) {
+      console.error('Login failed:', error.message);
+      console.error(error.stack);
+  
+      res.status(500).json({ errorMessage: 'Login failed: user doesnt exists or password is incorrect' });
+    }
 });
 
-// Existing route for displaying messages
-app.get('/messages', (req, res) => {
-    const { user } = req.query;
-    var userMessages = messages[user] || [];
+// Route for displaying messages
+app.get('/messages', async (req, res) => {
 
-    // Ensure the user parameter is provided
-    if (!user) {
-        return res.status(401).send("User query parameter is required.");
+    if (!req.session.isAuthenticated) {
+        return res.status(401).send('You are not authorized to view this page');
     }
-    
+
+    const { username } = req.session.user;
+    var userMessages = req.session.messages;
+
     // Render 'messages.ejs' with the list of messages for the user
-    res.render('messages', { user: user, messages: userMessages });
+    res.render('messages', { user: username, messages: userMessages });
 });
 
 
 // Route for sending messages
 app.get('/send', (req, res) => {
-    const { user } = req.query;
-    
-    // Ensure the user is valid
-    if (!user || !users[user]) {
-        return res.redirect('/');
+    if (!req.session.isAuthenticated) {
+        return res.status(401).send('You are not authorized to view this page');
     }
 
-    // Render 'send.ejs' template instead of sending a file
-    res.render('send', { user });
+    const { username } = req.session.user;
+    res.render('send', { user: username });
 });
 
-// Dummy endpoint for handling message sending
-app.post('/send', (req, res) => {
-    const { sender, recipient, message } = req.body;
-    
-    // Ensure both users exist
-    if (!users[sender] || !users[recipient]) {
-        return res.send('Failed to send message: Invalid user.');
+// Route for handling message sending
+app.post('/send', async (req, res) => {
+    if (!req.session.isAuthenticated) {
+        return res.status(401).json({ errorMessage: 'You are not authorized to view this page' });
     }
+
+    const { username } = req.session.user;
+    const { recipient, message } = req.body;
     
-    // Add the message to the recipient's messages array
-    if (!messages[recipient]) {
-        messages[recipient] = [];
+    // Ensure recipient user exist
+    if (!userExists(recipient)) {
+        return res.status(400).json({ errorMessage: 'You are not authorized to view this page' });
     }
-    messages[recipient].push(message);
-    
-    // Redirect to the messages page without reloading received messages
-    return res.redirect(`/messages?user=${encodeURIComponent(sender)}`);
+
+    try {
+      await sendMessage(username, recipient, message);
+
+      return res.status(201).json({ message: 'Message sent successfully'});
+    } 
+    catch (error) {
+      console.error('Send message failed:', error.message);
+      console.error(error.stack);
+  
+      return res.status(500).json({ errorMessage: error.message });
+    }
 });
 
 
