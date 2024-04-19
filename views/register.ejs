@@ -3,25 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <title>Capstone Project - Register</title>
-</head>
-<body>
-    <h1>Capstone Project</h1>
-    <h2>Register</h2>
-
-    <form id="registrationForm">
-        <label for="username">Username:</label>
-        <!-- Add a simple pattern to restrict special characters -->
-        <input type="text" id="username" name="username" pattern="\w+" title="Username should only contain letters and numbers." required>
-        <br>
-        <label for="password">Password:</label>
-        <!-- Add a pattern attribute that enforces password policies (min 8 chars, at least one letter, one number and one special character) -->
-        <input type="password" id="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[\W_]).{8,}" title="Password must contain at least 8 characters, including 1 letter, 1 number, and 1 special character." required>
-        <br>
-        <button type="button" onclick="submitRegistrationForm()">Register</button>
-    </form>
-
     <script>
+        // Function to validate the password and confirm password fields
+        function validatePasswords() {
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm_password').value;
+            const matchMsg = document.getElementById('match_msg');
+
+            if (password !== confirmPassword) {
+                matchMsg.textContent = 'Passwords do not match.';
+                matchMsg.style.color = 'red';
+                return false;
+            } else {
+                matchMsg.textContent = '';
+                return true;
+            }
+        }
+
         async function submitRegistrationForm() {
+            // First, validate the passwords
+            if (!validatePasswords()) {
+                return;
+            }
+
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value;
 
@@ -48,6 +52,24 @@
             }
         }
     </script>
+</head>
+<body>
+    <h1>Capstone Project</h1>
+    <h2>Register</h2>
 
+    <form id="registrationForm" onsubmit="event.preventDefault(); submitRegistrationForm();">
+        <label for="username">Username:</label>
+        <!-- Continue using the simple pattern as before -->
+        <input type="text" id="username" name="username" pattern="\w+" title="Username should only contain letters and numbers." required>
+        <br>
+        <label for="password">Password:</label>
+        <!-- Continue enforcing password policies as before -->
+        <input type="password" id="password" name="password" pattern="(?=.*\d)(?=.*[a-z])(?=.*[\W_]).{8,}" title="Password must contain at least 8 characters, including 1 letter, 1 number, and 1 special character." required>
+        <br>
+        <label for="confirm_password">Repeat Password:</label>
+        <input type="password" id="confirm_password" name="confirm_password" required>
+        <span id="match_msg"></span><br>
+        <button type="submit">Register</button>
+    </form>
 </body>
 </html>
